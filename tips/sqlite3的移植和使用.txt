@@ -1,0 +1,151 @@
+volatile  --->修饰易变的变量,告诉编译器不要去优化它(快速的不断变化的变量)
+restrict --->修饰指针,所有修改该指针所指向内存中内容的操作都必须通过该指针来修改,而不能通过其它途径(其它 变量或指针)来修改
+    int restrict *p;
+    int a=10;
+    p=&a;
+       a=15;
+       *p=15;         
+typeof() --->求变量的类型
+   
+    
+          
+嵌入式数据库
+=================
+数据结构:在计算机中用什么样的方式存储数据(顺序表,链表),用C语言写代码实现了数据的增删改查
+数据库:别人开发了现成的软件,帮助你实现数据的增删改查(用专门的命令帮助你实现这些操作)
+     
+1.常见的数据库软件
+     大型的数据库管理软件
+         MYSQL
+         SQL  SERVER 
+     嵌入式中
+         开源的  sqlite3
+
+2.sqlite3的移植
+     移植:在嵌入式开发中-->前辈已经帮我们干了很多事情,实现了很多源码功能--->后面的人做开发就可以借鉴前人的成果--->通过移植别人放在网上的源码--->可以得到静态库,和动态库(函数的源码),头文件(函数的声明),可执行程序()
+     移植就是将别人提供的源码通过特定的工具,"剽窃"到你自己的系统上直接使用
+     别人在网上发布的源码中一定会包含一个脚本程序--->configure(作用是自动帮助你生成Makefile)
+     移植的三部曲:(大部分的开源库在移植的时候差不多都要经历如下三个步骤)
+         第一步:  执行./configure
+               ./configure后面是可以添加很多配置选项的,具体有哪些配置选项,你可以使用./configure  --help命令查看
+                      --host=      指定编译程序的时候需要用到的交叉工具
+                      --prefix=    指定头文件,库文件的安装路径
+         第二步:  执行make
+         第三步:  执行make install  (安装库文件,头文件需要用到)
+
+     我们这一次移植sqlite3是比较简单的,但是后面会遇到一些很复杂的库移植(有可能configure后面需要加一大堆参数,有可能需要你修改.c源代码)
+
+3.使用sqlite3
+      将你移植得到的sqlite3拷贝一份到系统的环境变量/bin里面(方便使用)
+      表:  姓名  电话   学校 --->称为字段
+      我们现在学习sqlite3是使用表格来存放数据信息的
+      (1)新建数据库文件(后缀是.db结尾)
+           sqlite3   数据库文件的名字
+      (2)增删改查(分号一定不要忘记)
+         创建表  create table 表名(字段1，字段2, ...);
+               例如:create table student(name char[10],phone char[11],score float);
+                    create table if not exists student(myname char[15],age int);  //if not exists存在就不新建,不存在就新建
+                    insert into student values("xiaohuang",NULL,NULL);  //由于student表在新建没有对字段进行限制,导致了随便插入
+                    create table student(name char[10] not null,phone char[11] not null,float score);//名字和电话不允许传NULL
+                    create table student(name char[10] unique,phone char[11] not null,float score); //unique表示唯一的,不能出现同名
+                    create table student(name char[10] unique not null,phone char[11] not null,float score);
+         插入数据 insert into 表名 values (数据1， 数据2 ...);
+               例如:insert into student values("zhangsan","1388888888",60.5);
+
+         查询数据 select *或者字段名 from 表名 条件;
+             如果使用*表示查询所有的字段
+               例如:select *  from student;
+                    select * from student where score>65;  //查询分数大于65分的
+                    select * from student where score>65 and score<85; //并且
+                    select * from student where score>65 or score<85; //或者
+                    select * from student order by score  asc;  //升序   order by语句
+                    select * from student order by score  desc; //降序   
+                    select * from student where name like "%si";  //查询名字后面一个字是si的
+                    select * from student where name like "%si%";
+                    select name from student;
+                    select name from student where name="zhangsan";
+                    select name from student where score>60;
+         删除数据 delete  from 表名 where 条件
+                    delete from student where score<60;
+         更新数据 update 表名  set  （字段=？？） where 条件
+                    update student set name="zhangsi" where name="zhangsan";//将原来名字是zhangsan的修改成zhangsi
+         删除表 drop table 表名;
+                    drop table teacher;  //删除整个表格
+      (3)其它的命令(命令的后面不需要分号)
+          .help  --->查看帮助
+          .quit或者.exit --->退出数据库
+          .tables --->查看当前数据库文件中有哪些表格
+          .dump --->查看表格的详细信息
+   注意:
+       一: 增删改成不区分大小写,并且不能出现同名的表名(哪怕字段不一样也不行)
+       二:字符串可以用双引号或者单引号括起来  
+
+
+4.sqlite3支持的数据类型
+bit 0或1的整型数字
+int 从-2^31(-2,147,483,648)到2^31(2,147,483,647)的整型数字
+smallint 从-2^15(-32,768)到2^15(32,767)的整型数字
+tinyint 从0到255的整型数字
+
+float 从-1.79E+308到1.79E+308可变精度的数字
+real 从-3.04E+38到3.04E+38可变精度的数字
+char 定长非Unicode的字符型数据，最大长度为8000
+
+varchar 变长非Unicode的字符型数据，最大长度为8000
+text 变长非Unicode的字符型数据，最大长度为2^31-1(2G)
+
+nchar 定长Unicode的字符型数据，最大长度为8000
+nvarchar 变长Unicode的字符型数据，最大长度为8000
+ntext 变长Unicode的字符型数据，最大长度为2^31-1(2G)
+数据类型numeric(18,0)
+
+字符串定义：name char[10]
+            name varchar()
+
+
+5.使用sqlite3提供的接口函数写代码操作表格,数据库
+       通过去查看源码中的头文件可以看到函数原型
+       回调函数:
+            我想调用A函数,但是不直接调用,通过B函数来调用(B函数有一个参数,是个指针,该指针指向A)
+       (1)数据库的打开--->sqlite3_open()
+            int sqlite3_open(
+const char *filename, sqlite3 **ppDb
+);
+                   返回值:成功SQLITE_OK   这些宏定义可以去头文件sqlite3.h中422行 
+                     参数:filename --->你要打开的数据库文件的名字
+                          ppDb --->你打开的数据库文件对应的句柄
+       (2)执行sqlite3中的命令--->sqlite3_exec()   system()   exec()
+           int sqlite3_exec(
+sqlite3 *,const char *sql, int (*callback)(void*,int,char**,char**), void *,char **errmsg);  
+                   返回值:成功SQLITE_OK 
+                     参数:sqlite3 * --->你前面使用sqlite3_open()函数的第二个参数
+                          sql--->你要执行的命令
+                          int (*callback)(void*,int,char**,char**)--->函数指针,回调函数
+                                 当你执行select查询命令的时候,该参数就起作用
+                                       参数:void *-->接收来自第四个参数传递过来的数据
+                                            int --->表示表格中的列数
+                                            char** --->每一行的信息
+                                            char** --->字段名
+                            注意重点重点:select命令查询的结果有几条,那么该指针就调用几次
+                                         该函数的返回值一定要写
+                          void *--->传递给函数指针指向的函数的参数
+                          errmsg --->存放出错信息
+      (3)关闭数据库
+            int sqlite3_close(sqlite3*); 
+  注意:编译程序需要链接线程库跟dl库
+            gcc mydata.c sqlite3.c  -o  mydata  -lpthread -ldl
+
+6.移植到开发板上使用
+      移植步骤:
+           第一步:  ./configure   --host=arm-linux
+           第二步:  make
+      移植完毕,将sqlite3下载到开发板的/bin目录,并且修改权限为777 
+      file命令可以查看文件属性  file sqlite3  查看到它是ARM架构的
+
+
+作业:
+     1.获取linux系统时间的函数
+             time()和ctime()
+
+
+        
